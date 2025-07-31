@@ -8,16 +8,9 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import plotly.express as px
 
-# ===== NLTK =====
-# import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-
-# nltk.download('punkt', quiet=True)
-# nltk.download('wordnet', quiet=True)
-# nltk.download('omw-1.4', quiet=True)
-# nltk.download('stopwords', quiet=True)
 
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
