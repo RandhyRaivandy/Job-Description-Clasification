@@ -6,9 +6,13 @@ import pickle
 import re
 import nltk
 import base64
+import plotly.express as px
+
+# --- Import NLTK yang diperlukan ---
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+# ------------------------------------
 
 # --- NLTK Data Initialization ---
 try:
@@ -18,6 +22,9 @@ except LookupError:
     st.error("❌ Data NLTK (punkt, wordnet, omw-1.4, stopwords) tidak ditemukan.")
     st.info("Mohon unduh secara manual melalui terminal dengan perintah berikut:")
     st.code("python -m nltk.downloader punkt wordnet omw-1.4 stopwords")
+    st.stop()
+except NameError:
+    st.error("❌ `WordNetLemmatizer` tidak diimpor. Pastikan Anda memiliki `from nltk.stem import WordNetLemmatizer`.")
     st.stop()
 
 st.set_page_config(
@@ -100,13 +107,14 @@ with st.status("Memuat model dan komponen aplikasi...", expanded=True) as status
             type_mapping_path_default, chi2_selector_path_default
         )
         
+        # Perbaikan error "show_spinner" dan menyembunyikan status
         status.update(label="Model siap!", state="complete", expanded=False)
     except Exception as e:
         st.error(f"❌ Terjadi kesalahan fatal selama startup: {e}")
         status.update(label=f"Startup gagal: {e}", state="error", expanded=True)
         st.stop()
 
-# --- Preprocessing Function (tidak berubah) ---
+# --- Preprocessing Function ---
 def preprocess_text(text: str) -> list[str]:
     if not isinstance(text, str):
         return []
@@ -139,7 +147,12 @@ def predict_text(text_input: str) -> pd.DataFrame:
     unique, counts = np.unique(preds, return_counts=True)
     total = sum(counts)
     
-    result_dict = {type_mapping.get(i, f"Unknown_ID_{i}"): (counts[idx] / total) * 100 for idx, i in enumerate(unique)}
+    result_dict = {}
+    for idx, i in enumerate(unique):
+        # Perbaikan KeyError menggunakan .get()
+        class_name = type_mapping.get(i, f"Unknown_ID_{i}")
+        result_dict[class_name] = (counts[idx] / total) * 100
+        
     all_class_names = list(type_mapping.values()) 
     for cls_name in all_class_names:
         if cls_name not in result_dict:
@@ -228,6 +241,21 @@ def display_class_metrics(df_result: pd.DataFrame):
         df_result['Percentage_Normalized'] = (df_result['Percentage'] / df_result['Percentage'].sum()) * 100
     else:
         df_result['Percentage_Normalized'] = 0.0
+        
+    if 'Class' in df_result.columns and 'Percentage' in df_result.columns:
+        fig = px.bar(
+            df_result,
+            x='Percentage',
+            y='Class',
+            orientation='h',
+            labels={'Percentage': 'Persentase (%)', 'Class': 'Kategori'},
+            title='Distribusi Kategori CV',
+            color='Class'
+        )
+        # Menghilangkan legenda
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+
     cols = st.columns(num_cols)
     for i, (index, row) in enumerate(df_result.iterrows()):
         with cols[i % num_cols]:
@@ -235,7 +263,6 @@ def display_class_metrics(df_result: pd.DataFrame):
             percentage = row["Percentage_Normalized"] if 'Percentage_Normalized' in df_result.columns else row["Percentage"]
             st.metric(label=class_name, value=f"{percentage:.1f}%")
     st.markdown(f"**Catatan:** Persentase menunjukkan proporsi kalimat dalam CV yang terklasifikasi ke setiap kategori.")
-
 
 # ============== UI ==============
 st.title("🌟 CV Content Classifier")
@@ -267,20 +294,18 @@ div.stDownloadButton > button:hover {
 
 st.markdown("---")
 
-# --- Perubahan di sini: Mengganti st.radio dengan st.selectbox ---
 input_type = st.selectbox(
     "**Pilih Metode Input:**",
     options=["Teks Langsung 📝", "Unggah File CSV 📁"],
     index=0,
     help="Pilih apakah Anda ingin memasukkan teks CV secara langsung atau mengunggah file CSV."
 )
-# --- Akhir Perubahan ---
 
 st.markdown("---")
 
 if input_type == "Teks Langsung 📝":
     user_input = st.text_area("Masukkan teks CV Anda di sini:", height=250, 
-                              placeholder="Contoh: 'Pengalaman kerja: Software Engineer di Google (2020-sekarang). Lulusan Ilmu Komputer dari Universitas ABC.'")
+                              placeholder="Contoh: 'Sales Associate at Retail Giant (2016-2017). Exceeded sales targets by 15%. Dean's List (2019, 2020). Highly motivated and results-oriented professional with 5+ years of experience. Fluent in English and Bahasa Indonesia. Associate Degree in Electrical Engineering, Technical College, 2018.'")
     
     if st.button("Analisis Teks CV", type="primary"):
         if user_input:
@@ -305,7 +330,6 @@ elif input_type == "Unggah File CSV 📁":
 
         if "id" in df.columns and "text" in df.columns:
             st.subheader("Data CSV yang Diunggah")
-            
             st.dataframe(
                 df.head().style.set_properties(**{'width': '50px'}, subset=pd.IndexSlice[:, ['id']])
                                .set_properties(**{'width': '600px'}, subset=pd.IndexSlice[:, ['text']]),
@@ -336,6 +360,3 @@ elif input_type == "Unggah File CSV 📁":
             st.info("Contoh format CSV:\n\n```csv\nid,text\n1,\"Ini adalah pengalaman saya...\"\n2,\"Pendidikan terakhir saya...\"\n```")
     else:
         st.info("Silakan unggah file CSV Anda di sini untuk memulai proses klasifikasi.")
-
-st.markdown("---")
-st.caption("Powered by Streamlit & Machine Learning Model")
