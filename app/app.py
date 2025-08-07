@@ -12,7 +12,6 @@ import plotly.express as px
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
-# ------------------------------------
 
 # --- NLTK Data Initialization ---
 try:
@@ -107,7 +106,6 @@ with st.status("Memuat model dan komponen aplikasi...", expanded=True) as status
             type_mapping_path_default, chi2_selector_path_default
         )
         
-        # Perbaikan error "show_spinner" dan menyembunyikan status
         status.update(label="Model siap!", state="complete", expanded=False)
     except Exception as e:
         st.error(f"❌ Terjadi kesalahan fatal selama startup: {e}")
@@ -149,7 +147,6 @@ def predict_text(text_input: str) -> pd.DataFrame:
     
     result_dict = {}
     for idx, i in enumerate(unique):
-        # Perbaikan KeyError menggunakan .get()
         class_name = type_mapping.get(i, f"Unknown_ID_{i}")
         result_dict[class_name] = (counts[idx] / total) * 100
         
@@ -360,3 +357,4 @@ elif input_type == "Unggah File CSV 📁":
             st.info("Contoh format CSV:\n\n```csv\nid,text\n1,\"Ini adalah pengalaman saya...\"\n2,\"Pendidikan terakhir saya...\"\n```")
     else:
         st.info("Silakan unggah file CSV Anda di sini untuk memulai proses klasifikasi.")
+
